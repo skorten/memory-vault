@@ -35,13 +35,17 @@ async def write_graph_for_chunk(
         pool = await get_pool()
         async with pool.connection() as conn:
             try:
-                # 1. Upsert every entity, collecting id by (lower(name), type).
+                # 1. Upsert every entity, collecting id by lower(name).
+                #    Conflict is on (lower(name), space_id) only — NER type is
+                #    ignored for dedup so capitalisation variants ("CloudZero",
+                #    "cloudzero") and type misclassifications never split one
+                #    real-world entity into multiple graph nodes.
                 entity_ids: dict[tuple[str, str], str] = {}
                 for ent in entities:
                     cur = await conn.execute(
                         """INSERT INTO entities (name, type, space_id)
                            VALUES (%s, %s, %s)
-                           ON CONFLICT (lower(name), type, space_id)
+                           ON CONFLICT (lower(name), space_id)
                            DO UPDATE SET name = EXCLUDED.name
                            RETURNING id""",
                         (ent.name, ent.type, space_id),
