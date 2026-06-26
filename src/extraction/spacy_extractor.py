@@ -109,6 +109,11 @@ def extract_entities(text: str) -> list[Entity]:
         name = ent.text.strip()
         if not name or not _is_clean_name(name):
             continue
+        # Imperative sentences and bullet lists start with a capitalized verb
+        # that spaCy tags as PERSON or ORG. Reject any span whose tokens
+        # include a verb — real entity names don't contain verbs.
+        if any(token.pos_ == "VERB" for token in ent):
+            continue
         key = (name.lower(), mapped_type)
         ner_spans.append((ent.start_char, ent.end_char))
         if key in seen:
