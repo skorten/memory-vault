@@ -34,6 +34,19 @@ _NER_LABEL_MAP = {
 _MIN_CONCEPT_TOKENS = 2
 _MIN_CONCEPT_OCCURRENCES = 2
 
+# Entity name validity
+_CODE_ARTIFACT_CHARS = frozenset("`>")
+_MAX_ENTITY_LEN = 60
+
+
+def _is_clean_name(name: str) -> bool:
+    """Reject names that are code fragments rather than real entity names."""
+    if len(name) > _MAX_ENTITY_LEN:
+        return False
+    if any(c in name for c in _CODE_ARTIFACT_CHARS):
+        return False
+    return True
+
 
 @dataclass
 class Entity:
@@ -94,7 +107,7 @@ def extract_entities(text: str) -> list[Entity]:
         if mapped_type is None:
             continue
         name = ent.text.strip()
-        if not name:
+        if not name or not _is_clean_name(name):
             continue
         key = (name.lower(), mapped_type)
         ner_spans.append((ent.start_char, ent.end_char))
